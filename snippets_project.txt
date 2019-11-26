@@ -127,7 +127,7 @@
   <p>Você está em ambiente de [<strong><%= Rails.env %></strong>]</p>
 
 *Fazer novo build:
-  Docker-compose build
+  docker-compose build
 
 ---CONFIGURAÇÃO PARA AMBIENTE DE PRODUÇÃO---
 
@@ -298,3 +298,6 @@ services:
 
 *Dentro da VPS via ssh roda as migrations de produção:
   docker-compose run app bundle exec rails db:migrate RAILS_ENV=production
+
+*Fazer novo build:
+  docker-compose build
