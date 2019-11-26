@@ -251,7 +251,7 @@ services:
       volumes:
         - ./postgres:/var/lib/postgresql/data
       ports:
-        - 5455:5432
+        - 5432:5432
     app:
       build: .
       volumes:
@@ -293,4 +293,8 @@ services:
 *Verifique as portas ativas na VPS:
   ufw status
 
-*
+*Dentro da VPS via ssh cria o banco de dados de produção:
+  docker-compose run app bundle exec rails db:create RAILS_ENV=production
+
+*Dentro da VPS via ssh roda as migrations de produção:
+  docker-compose run app bundle exec rails db:migrate RAILS_ENV=production
