@@ -1,0 +1,283 @@
+*Cria a pasta nginx_postgres_puma_rails
+  mkdir nginx_postgres_puma_rails
+
+*Dentro de nginx_postgres_puma_rails cria os arquivos Dockerfile e docker-compose.yml
+  touch Dockerfile
+  touch docker-compose.yml
+
+*Dentro de nginx_postgres_puma_rails cria a pasta postgres
+  mkdir postgres
+
+*Dentro de nginx_postgres_puma_rails cria a pasta rails_app
+  mkdir rails_app
+
+*Dentro de rails_app cria os arquivos Gemfile e Gemfile.lock
+  touch Gemfile
+  touch Gemfile.lock
+
+*Adicione os códigos abaixo nos respectivos arquivos:
+  Dockerfile:
+    FROM ruby:2.4-jessie
+    RUN apt-get update -qq && apt-get install -y build-essential libpq-dev nodejs
+    RUN mkdir /rails_app
+    WORKDIR /rails_app
+    COPY rails_app/Gemfile /rails_app/Gemfile
+    COPY rails_app/Gemfile.lock /rails_app/Gemfile.lock
+    RUN bundle install
+    COPY rails_app /rails_app
+    EXPOSE 3000
+    CMD ["bundle", "exec", "puma", "-C", "config/puma.rb"]
+
+  docker-compose.yml:
+    version: '3'
+
+    services:
+      web:
+          image: nginx
+          ports:
+            - 80:80
+      db:
+          image: postgres
+          restart: always
+          environment:
+            POSTGRES_PASSWORD: postgres
+          volumes:
+            - ./postgres:/var/lib/postgresql/data
+          ports:
+            - 5455:5432
+      app:
+          build: .
+          volumes:
+            - ./rails_app:rails_app
+          ports:
+            3008:3000
+          depends_on:
+            - db
+
+  Gemfile:
+    source 'https://rubygems.org'
+    gem 'rails', '5.1.4'
+
+*Cria a aplicação:
+  docker-compose run app bundle exec rails new . -d postgresql
+
+  Observações:
+    *Caso ocorra erro de permissão na pasta postgres, execute o comando abaixo:
+      sudo chown -R $USER:$USER .
+    *Na mensagem Overwrite /rails_app/Gemfile? (enter "h" for help) [Ynaqdhm] responda:
+      Y
+
+*Substitui o conteúdo do arquivo rails_app/config/database.yml por:
+  default: &default
+    adapter: postgresql
+    encoding: unicode
+    pool: <%= ENV.fetch("RAILS_MAX_THREADS") { 5 } %>
+    username: postgres
+    password: postgres
+    host: db
+    port: 5455
+
+  development:
+    <<: *default
+    database: rails_app_development
+
+  test:
+    <<: *default
+    database: rails_app_test
+
+  production:
+    <<: *default
+    database: rails_app_production
+
+*Executa o bundle install:
+  docker-compose run app bundle install
+
+*Cria o banco de dados:
+  docker-compose run app bundle exec rails db:create
+  
+  Observações:
+    *Caso ocorra o seguinte erro:
+      Could not find public_suffix-4.0.1 in any of the sources
+      Run `bundle install` to install missing gems.
+    
+      *Rode o:
+        docker-compose build
+
+*Cria o scaffold:
+  docker-compose run app bundle exec rails g scaffold User name:string email:string
+
+*Roda as migrations:
+  docker-compose run app bundle exec rails db:migrate
+
+*Cria o controller:
+  docker-compose run app bundle exec rails g controller home index
+
+*No arquivo routes adicione a linha abaixo:
+  root to: 'home#index'
+
+*Adiciona o código abaixo no arquivo view/home/index.html.erb:
+  <h1>Seja Bem-Vindo!</h1>
+  <hr/>
+  <ul>
+    <li>
+      <%= link_to “Cadastro de Usuários”, users_path %>
+    </li>
+  </ul>
+  <hr/>
+  <p>Você está em ambiente de [<strong><%= Rails.env %></strong>]</p>
+
+*Fazer novo build:
+  Docker-compose build
+
+---CONFIGURAÇÃO PARA AMBIENTE DE PRODUÇÃO---
+
+*Crie o arquivo .env dentro de nginx_postgres_puma_rails:
+  touch .env
+
+*Insara o conteúdo abaixo dentro do arquivo .env:
+  RAILS_ENV=production
+
+*Altera o arquivo docker-compose.yml, adicionando o environment:
+  version: '3'
+
+services:
+   web:
+      image: nginx
+      ports:
+         - 80:80
+   db:
+      image: postgres
+      restart: always
+      environment:
+         POSTGRES_PASSWORD: postgres
+      volumes:
+         - ./postgres:/var/lib/postgresql/data
+      ports:
+         - 5455:5432
+   app:
+      build: .
+      volumes:
+         - ./rails_app:/rails_app
+      ports:
+         - 3008:3000
+      environment:
+        - RAILS_ENV=${RAILS_ENV}
+      depends_on:
+         - db
+
+*Cria o secrets:
+  docker-compose run app bundle exec rails secret
+
+*Copie a chave gerada e adicione no arquivo rails_app/config/secrets.yml:
+  Alterar:
+    production:
+      secret_key_base: <%= ENV["SECRET_KEY_BASE"] %>
+  
+  por:
+    production:
+      db6bc409fa1eca37cd54914e753d26c256fd730facf23fc9ed4bbffe798faae1ebfe900b18f21703c191c0db02b320a2b711404babbff6225ac866cafe139dba
+
+*Compila os assets:
+  docker-compose run app bundle exec rails assets:precompile RAILS_ENV=production
+
+*Cria o banco de dados de produção:
+  docker-compose run app bundle exec rails db:create RAILS_ENV=production
+
+*Roda as migrations de produção:
+  docker-compose run app bundle exec rails db:migrate RAILS_ENV=production
+
+*Dentro de nginx_postgres_puma_rails cria a pasta nginx:
+  mkdir nginx
+
+*Dentro de nginx cria os arquivos Dockerfile e app.conf:
+  touch Dockerfile
+  touch app.conf
+
+*Adiciona o código abaixo no arquivo nginx_postgres_puma_rails/nginx/Dockerfile:
+  FROM nginx
+  RUN apt-get update -qq && apt-get -y install apache2-utils
+  ENV RAILS_ROOT /var/www/rails_app
+  WORKDIR $RAILS_ROOT
+  RUN mkdir -p log
+  COPY nginx/app.conf /tmp/docker_example.nginx
+  RUN envsubst '$RAILS_ROOT' < /tmp/docker_example.nginx > /etc/nginx/conf.d/default.conf
+  EXPOSE 80
+  CMD [ "nginx", "-g", "daemon off;" ]
+
+*Adiciona o código abaixo no arquivo nginx_postgres_puma_rails/nginx/app.conf:
+  upstream puma_rails_app {
+    server app:3000;
+  }
+
+  server {
+    listen 80;
+    proxy_buffers 64 16k;
+    proxy_max_temp_file_size 1024m;
+    proxy_connect_timeout 5s;
+    proxy_send_timeout 10s;
+    proxy_read_timeout 10s;
+    location / {
+      try_files $uri $uri/ @nginx_rails_app;
+    }
+    location @nginx_rails_app {
+      proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+      proxy_set_header Host $http_host;
+      proxy_redirect off;
+      proxy_pass http://puma_rails_app;
+      # limit_req zone=one;
+      access_log /var/www/rails_app/log/nginx.access.log;
+      error_log /var/www/rails_app/log/nginx.error.log;
+    }
+  }
+
+*Dentro de nginx_postgres_puma_rails substitui o códigi do arquivo docker-compose.yml por:
+  version: '3'
+
+  services:
+    web:
+      image: nginx
+      build:
+        context: .
+        dockerfile: ./nginx/Dockerfile
+      depends_on:
+        - app
+      ports:
+        - 80:80
+    db:
+      image: postgres
+      restart: always
+      environment:
+        POSTGRES_PASSWORD: postgres
+      volumes:
+        - ./postgres:/var/lib/postgresql/data
+      ports:
+        - 5455:5432
+    app:
+      build: .
+      volumes:
+        - ./rails_app:/rails_app
+      ports:
+        - 3008:3000
+      environment:
+        - RAILS_ENV=${RAILS_ENV}
+      depends_on:
+        - db
+
+*Dentro de nginx_postgres_puma_rails cria o arquivo .gitignore:
+  touch .gitignore
+
+*Adiciona no arquivo .gitignore o código abaixo:
+  postgres/
+
+*Cria o repositório git:
+  git init
+
+*Adiciona todos os arquivos ao git:
+  git add .
+
+*Informa uma mensagem para o commit:
+  git commit -m 'first commit'
+
+*Cria o repositório no github:
+  https://github.com
+

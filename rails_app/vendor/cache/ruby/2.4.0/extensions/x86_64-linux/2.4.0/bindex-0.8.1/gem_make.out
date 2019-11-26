@@ -1,0 +1,15 @@
+current directory: /rails_app/vendor/cache/ruby/2.4.0/gems/bindex-0.8.1/ext/skiptrace
+/usr/local/bin/ruby -I /usr/local/lib/ruby/site_ruby/2.4.0 -r ./siteconf20191126-1-tpmwlu.rb extconf.rb
+creating Makefile
+
+current directory: /rails_app/vendor/cache/ruby/2.4.0/gems/bindex-0.8.1/ext/skiptrace
+make "DESTDIR=" clean
+
+current directory: /rails_app/vendor/cache/ruby/2.4.0/gems/bindex-0.8.1/ext/skiptrace
+make "DESTDIR="
+compiling cruby.c
+linking shared-object skiptrace/internal/cruby.so
+
+current directory: /rails_app/vendor/cache/ruby/2.4.0/gems/bindex-0.8.1/ext/skiptrace
+make "DESTDIR=" install
+/usr/bin/install -c -m 0755 cruby.so ./.gem.20191126-1-1nl5c21/skiptrace/internal
