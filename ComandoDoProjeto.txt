@@ -281,3 +281,16 @@ services:
 *Cria o repositório no github:
   https://github.com
 
+*Link o projeto como o repositório remoto:
+  git remote add origin git@github.com:nonatojunior/nginx_postgres_puma_rails.git
+
+*Envia o projeto para o repositório remoto:
+  git push -u origin master
+
+*Loga via ssh na VPS da Digital Ocean:
+  ssh root@IP
+
+*Verifique as portas ativas na VPS:
+  ufw status
+
+*
