@@ -301,3 +301,9 @@ services:
 
 *Fazer novo build:
   docker-compose build
+
+*Execute o comando abaixo para criar o container
+  docker-compose up -d
+  
+*Excute o comando abaixo para parar o container
+  docker-compose down
